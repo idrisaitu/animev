@@ -1,0 +1,109 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String         @id @default(uuid())
+  email         String         @unique
+  password      String
+  username      String         @unique
+  firstName     String?
+  lastName      String?
+  avatar        String?
+  bio           String?
+  birthDate     DateTime?
+  country       String?
+  language      String         @default("ru")
+  theme         String         @default("dark")
+  emailVerified Boolean        @default(false)
+  isActive      Boolean        @default(true)
+  role          String         @default("USER")
+  lastLoginAt   DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  favorites     Favorite[]
+  watchHistory  WatchHistory[]
+}
+
+model Anime {
+  id            String         @id @default(uuid())
+  malId         String?       @unique
+  title         String
+  originalTitle String?
+  description   String?
+  type          String
+  status        String
+  releaseDate   DateTime?
+  rating        Float?
+  episodes      Int?
+  duration      Int?
+  genres        Genre[]
+  image         String?
+  trailer       String?
+  favorites     Favorite[]
+  watchHistory  WatchHistory[]
+  videos        Video[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+model Video {
+  id        String   @id @default(uuid())
+  animeId   String
+  anime     Anime    @relation(fields: [animeId], references: [id])
+  episode   Int
+  source    String
+  url       String
+  quality   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([animeId, episode, source])
+}
+
+model Genre {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  animes      Anime[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Favorite {
+  id        String   @id @default(uuid())
+  userId    String
+  animeId   String
+  user      User     @relation(fields: [userId], references: [id])
+  anime     Anime    @relation(fields: [animeId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@unique([userId, animeId])
+}
+
+model WatchHistory {
+  id        String   @id @default(uuid())
+  userId    String
+  animeId   String
+  episode   Int
+  progress  Float    @default(0)
+  user      User     @relation(fields: [userId], references: [id])
+  anime     Anime    @relation(fields: [animeId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, animeId, episode])
+}
+
+// Enums converted to strings for SQLite compatibility
+// Role: USER, ADMIN
+// AnimeType: TV, MOVIE, OVA, ONA, SPECIAL
+// AnimeStatus: ONGOING, FINISHED, ANNOUNCED
+// VideoSource: KODIK, SIBNET

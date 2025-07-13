@@ -1,103 +1,160 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+import { useState, useEffect } from 'react';
+import type { Anime } from '@/types/anime';
+import { Button } from '@/components/ui/button';
+import AnimeCarousel from '@/components/AnimeCarousel';
+import Navigation from '@/components/Navigation';
+import MobileNavigation from '@/components/MobileNavigation';
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+export default function HomePage() {
+  const [popularAnime, setPopularAnime] = useState<Anime[]>([]);
+  const [recentAnime, setRecentAnime] = useState<Anime[]>([]);
+  const [ongoingAnime, setOngoingAnime] = useState<Anime[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchAnime = async () => {
+      try {
+        // Fetch different categories of anime from our API
+        const [popularRes, recentRes, ongoingRes] = await Promise.all([
+          fetch('/api/anime/popular?page=1&limit=10'),
+          fetch('/api/anime?sortBy=createdAt&order=desc&page=1&limit=10'),
+          fetch('/api/anime?status=ONGOING&page=1&limit=10')
+        ]);
+
+        if (!popularRes.ok || !recentRes.ok || !ongoingRes.ok) {
+          throw new Error('Failed to fetch anime data');
+        }
+
+        const [popular, recent, ongoing] = await Promise.all([
+          popularRes.json(),
+          recentRes.json(),
+          ongoingRes.json()
+        ]);
+
+        setPopularAnime(popular.data || []);
+        setRecentAnime(recent.data || []);
+        setOngoingAnime(ongoing.data || []);
+      } catch (err: any) {
+        console.error('Failed to fetch anime data:', err);
+        setError(err.response?.data?.message || 'Failed to load anime data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAnime();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen hero-gradient flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-orange-500 mx-auto mb-4"></div>
+          <h2 className="text-2xl font-bold text-white mb-2">Загрузка аниме...</h2>
+          <p className="text-gray-400">Подождите, мы загружаем лучшие аниме для вас</p>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen hero-gradient flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-6xl mb-4">😞</div>
+          <h2 className="text-2xl font-bold text-white mb-2">Ошибка загрузки</h2>
+          <p className="text-gray-400 mb-4">{error}</p>
+          <Button
+            onClick={() => window.location.reload()}
+            className="btn-crunchyroll"
+          >
+            Попробовать снова
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-background text-foreground">
+      {/* Navigation */}
+      <Navigation />
+      <MobileNavigation />
+
+      {/* Hero Section */}
+      <section className="relative h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-black">
+        <div className="absolute inset-0 bg-black/50"></div>
+        <div className="relative z-10 text-center text-white max-w-4xl mx-auto px-4">
+          <h1 className="text-6xl font-bold mb-6 bg-gradient-to-r from-orange-400 to-orange-600 bg-clip-text text-transparent">
+            CRUNCHYROLL
+          </h1>
+          <p className="text-xl mb-8 text-gray-300">
+            Смотрите лучшие аниме онлайн в высоком качестве
+          </p>
+          <Button className="bg-orange-500 hover:bg-orange-600 text-white px-8 py-4 text-lg rounded-lg">
+            Начать просмотр
+          </Button>
+        </div>
+      </section>
+
+      <div className="container mx-auto px-4 space-y-16 py-12">
+        {/* Popular Anime Carousel */}
+        <section>
+          <AnimeCarousel
+            title="Popular Right Now"
+            items={popularAnime.map(anime => ({
+              id: anime.id,
+              title: anime.title,
+              image: anime.image || '/placeholder-anime.jpg',
+              rating: anime.rating,
+              year: anime.releaseDate ? new Date(anime.releaseDate).getFullYear().toString() : undefined,
+              episodes: anime.episodes,
+              status: anime.status,
+              genres: anime.genres.map(g => g.name),
+              description: anime.description
+            }))}
           />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
+        </section>
+
+        {/* Ongoing Series Carousel */}
+        <section>
+          <AnimeCarousel
+            title="Ongoing Series"
+            items={ongoingAnime.map(anime => ({
+              id: anime.id,
+              title: anime.title,
+              image: anime.image || '/placeholder-anime.jpg',
+              rating: anime.rating,
+              year: anime.releaseDate ? new Date(anime.releaseDate).getFullYear().toString() : undefined,
+              episodes: anime.episodes,
+              status: anime.status,
+              genres: anime.genres.map(g => g.name),
+              description: anime.description
+            }))}
           />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
+        </section>
+
+        {/* Recently Added Carousel */}
+        <section>
+          <AnimeCarousel
+            title="Recently Added"
+            items={recentAnime.map(anime => ({
+              id: anime.id,
+              title: anime.title,
+              image: anime.image || '/placeholder-anime.jpg',
+              rating: anime.rating,
+              year: anime.releaseDate ? new Date(anime.releaseDate).getFullYear().toString() : undefined,
+              episodes: anime.episodes,
+              status: anime.status,
+              genres: anime.genres.map(g => g.name),
+              description: anime.description
+            }))}
           />
-          Go to nextjs.org →
-        </a>
-      </footer>
+        </section>
+      </div>
     </div>
   );
 }
